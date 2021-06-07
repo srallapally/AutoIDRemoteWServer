@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="autoidwsserver">
+    <output-path>$PROJECT_DIR$/out/artifacts/autoidwsserver</output-path>
+    <root id="archive" name="autoidwsserver.war">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="AutoIDRemoteWServer" />
+        </element>
+      </element>
+      <element id="javaee-facet-resources" facet="AutoIDRemoteWServer/web/Web" />
+    </root>
+  </artifact>
+</component>
