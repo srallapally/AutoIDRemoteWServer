@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/AutoIDRemoteWServer.iml" filepath="$PROJECT_DIR$/AutoIDRemoteWServer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/autoidwsserver.iml" filepath="$PROJECT_DIR$/autoidwsserver.iml" />
     </modules>
   </component>
 </project>

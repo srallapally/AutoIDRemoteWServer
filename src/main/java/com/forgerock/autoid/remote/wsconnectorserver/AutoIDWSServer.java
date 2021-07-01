@@ -1,48 +1,91 @@
 package com.forgerock.autoid.remote.wsconnectorserver;
+
+import com.forgerock.autoid.remote.utils.AgentSession;
+import com.forgerock.autoid.remote.utils.Message;
+import com.forgerock.autoid.remote.utils.Repository;
+import com.google.gson.Gson;
+import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+
 import java.io.IOException;
-import java.util.logging.Logger;
-import javax.websocket.CloseReason;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import javax.websocket.OnClose;
 
-import javax.websocket.OnMessage;
-
-import javax.websocket.OnOpen;
-
-import javax.websocket.Session;
-
-import javax.websocket.CloseReason.CloseCodes;
-
-import javax.websocket.server.ServerEndpoint;
-
-@ServerEndpoint(value = "/autoidserver")
 public class AutoIDWSServer {
-    private Logger logger = Logger.getLogger(this.getClass().getName());
+    private Server server;
+    public void setup() {
+        final int port = 5040;
+        final int sslPort = 8443;
 
-    @OnOpen
-    public void onOpen(Session session) {
-        System.out.println("Connected ... " + session.getId());
-        logger.info("Connected ... " + session.getId());
+/*
+        SslContextFactory contextFactory = new SslContextFactory();
+        contextFactory.setKeyStorePath("./keystore");
+        contextFactory.setKeyStorePassword("Avaya123");
+        SslConnectionFactory sslConnectionFactory = new SslConnectionFactory(contextFactory, org.eclipse.jetty.http.HttpVersion.HTTP_1_1.toString());
+
+        HttpConfiguration config = new HttpConfiguration();
+        config.setSecureScheme("https");
+        config.setSecurePort(sslPort);
+        config.setOutputBufferSize(32786);
+        config.setRequestHeaderSize(8192);
+        config.setResponseHeaderSize(8192);
+        HttpConfiguration sslConfiguration = new HttpConfiguration(config);
+        sslConfiguration.addCustomizer(new SecureRequestCustomizer());
+        HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(sslConfiguration);
+*/
+        //ServerConnector connector = new ServerConnector(server, sslConnectionFactory, httpConnectionFactory);
+        server = new Server();
+        ServerConnector connector = new ServerConnector(server);
+        connector.setPort(port);
+        server.addConnector(connector);
+
+        ServletContextHandler wsContext = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        wsContext.setContextPath("/");
+
+        server.setHandler(wsContext);
+        wsContext.addServlet(AutoIDWorkServlet.class,"/autoidworkitems");
     }
 
-    @OnMessage
-    public String onMessage(String message, Session session) {
-        System.out.println(" Got the message ... " + session.getId()+"::"+message);
-        switch (message) {
-            case "quit":
-                try {
-                    session.close(new CloseReason(CloseCodes.NORMAL_CLOSURE, "Game ended"));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-        }
-        return message;
+    public void start() throws Exception {
+        server.start();
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+        //executorService.scheduleAtFixedRate(() -> {
+        //    System.out.println("Am I alive?");
+        //    System.out.println("There are " + Repository.getInstance().getAllSessions().keySet().size() + "agents connected");
+        //
+//
+        //},1, 1, TimeUnit.MINUTES);
+        executorService.scheduleAtFixedRate(() -> {
+                    Iterator itr = Repository.getInstance().getAllSessions().entrySet().iterator();
+                    while (itr.hasNext()) {
+                        Map.Entry<String, AgentSession> entry = (Map.Entry<String, AgentSession>) itr.next();
+                        Message ack = new Message();
+                        ack.op = Message.OP_APPROVAL;
+                        ack.agentId = entry.getValue().getAgentId();
+                        ack.sessionId = entry.getValue().getSessionId();
+                        Gson gson = new Gson();
+                        //String data = "Pong";
+                        //ByteBuffer payload = ByteBuffer.wrap(data.getBytes());
+                        entry.getValue().getSession().getRemote().sendStringByFuture(gson.toJson(ack,Message.class));
+                    }
+                },
+                1, 1, TimeUnit.MINUTES);
+        server.dump(System.err);
+        server.join();
     }
 
-    @OnClose
-    public void onClose(Session session, CloseReason closeReason) {
-        System.out.println(String.format("Session %s closed because of %s", session.getId(), closeReason));
-        logger.info(String.format("Session %s closed because of %s", session.getId(), closeReason));
+    public static void main(String args[]) throws Exception {
+        AutoIDWSServer theServer = new AutoIDWSServer();
+        theServer.setup();
+        theServer.start();
     }
+
 }

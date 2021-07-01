@@ -7,10 +7,12 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="AutoIDRemoteWServer" />
+        <module name="autoidwsserver" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="AutoIDRemoteWServer" target="1.8" />
+      <module name="autoidwsserver" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
